@@ -5,5 +5,6 @@ package android.ai.authenticationapp.auth.domain.model
  */
 data class AuthSession(
     val user: User,
-    val session: Session
+    val session: Session,
+    val credentials: Credentials
 )
