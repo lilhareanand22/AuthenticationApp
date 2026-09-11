@@ -7,17 +7,25 @@ import android.ai.authenticationapp.auth.data.remote.dto.RefreshTokenRequestDto
 import android.ai.authenticationapp.auth.data.remote.dto.RefreshTokenResponseDto
 
 /**
- * Data layer: Remote data source interface for authentication operations.
+ * Data layer: Implementation of [AuthRemoteDataSource] using [AuthApi].
  */
-interface AuthRemoteDataSource {
+class AuthRemoteDataSourceImpl(
+    private val authApi: AuthApi,
+) : AuthRemoteDataSource {
 
-    suspend fun login(
+    override suspend fun login(
         request: LoginRequestDto,
-    ): LoginResponseDto
+    ): LoginResponseDto {
+        return authApi.login(request)
+    }
 
-    suspend fun getCurrentUser(): CurrentUserResponseDto
+    override suspend fun getCurrentUser(): CurrentUserResponseDto {
+        return authApi.getCurrentUser()
+    }
 
-    suspend fun refreshToken(
+    override suspend fun refreshToken(
         request: RefreshTokenRequestDto,
-    ): RefreshTokenResponseDto
+    ): RefreshTokenResponseDto {
+        return authApi.refreshToken(request)
+    }
 }
