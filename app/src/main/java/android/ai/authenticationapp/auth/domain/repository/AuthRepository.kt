@@ -2,12 +2,21 @@ package android.ai.authenticationapp.auth.domain.repository
 
 import android.ai.authenticationapp.auth.domain.model.AuthSession
 import android.ai.authenticationapp.auth.domain.model.Credentials
+import android.ai.authenticationapp.auth.domain.model.LoginRequest
+import android.ai.authenticationapp.auth.domain.model.User
 
 /**
- * Domain layer: Contains core business logic, domain models, use cases, and repository interfaces, independent of UI or data frameworks.
+ * Domain layer: Repository interface for authentication operations.
  */
 interface AuthRepository {
-    suspend fun login(credentials: Credentials): AuthSession
-    suspend fun logout()
-    suspend fun restoreSession(): AuthSession?
+
+    suspend fun login(
+        request: LoginRequest,
+    ): AuthSession
+
+    suspend fun getCurrentUser(): User
+
+    suspend fun refreshToken(
+        refreshToken: String,
+    ): Credentials
 }
