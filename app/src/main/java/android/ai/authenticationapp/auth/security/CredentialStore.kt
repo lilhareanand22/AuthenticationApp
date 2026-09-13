@@ -1,10 +1,15 @@
 package android.ai.authenticationapp.auth.security
 
+import android.ai.authenticationapp.auth.domain.model.Credentials
+
 /**
- * Security layer: Handles security-sensitive operations such as credential storage and biometric authentication abstractions.
+ * Security layer: Handles secure credential persistence abstractions.
  */
 interface CredentialStore {
-    suspend fun saveToken(token: String)
-    suspend fun getToken(): String?
+
+    suspend fun save(credentials: Credentials)
+
+    suspend fun get(): Credentials?
+
     suspend fun clear()
 }
