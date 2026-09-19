@@ -21,7 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -140,17 +139,6 @@ fun LoginScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Forgot Password Placeholder
-        TextButton(
-            onClick = { /* Ignored: Out of scope */ },
-            modifier = Modifier.align(Alignment.End),
-            enabled = !state.isLoading
-        ) {
-            Text("Forgot password?")
-        }
-
         Spacer(modifier = Modifier.height(16.dp))
 
         // Login Button
@@ -203,18 +191,7 @@ fun LoginScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Social Login Placeholder
-        OutlinedButton(
-            onClick = { /* Ignored: Out of scope */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
-            enabled = !state.isLoading
-        ) {
-            Text("Continue with Google")
-        }
+        // Social Login remains un-implemented per step boundary
     }
 }
 
