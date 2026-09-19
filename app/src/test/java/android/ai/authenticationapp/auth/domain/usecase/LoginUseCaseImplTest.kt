@@ -21,13 +21,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 
-class FakeAuthRepository : AuthRepository {
+class FakeAuthRepository(private val events: MutableList<String>? = null) : AuthRepository {
     var capturedLoginRequest: LoginRequest? = null
     var throwException: Throwable? = null
     var authSessionToReturn: AuthSession? = null
 
     override suspend fun login(request: LoginRequest): AuthSession {
         capturedLoginRequest = request
+        events?.add("authRepository.login")
         if (throwException != null) throw throwException!!
         return authSessionToReturn!!
     }
@@ -36,15 +37,19 @@ class FakeAuthRepository : AuthRepository {
     override suspend fun refreshToken(refreshToken: String): Credentials = throw NotImplementedError()
 }
 
-class FakeDeviceIdProvider : DeviceIdProvider {
-    override suspend fun getDeviceId(): String = "test-device-id"
+class FakeDeviceIdProvider(private val events: MutableList<String>? = null) : DeviceIdProvider {
+    override suspend fun getDeviceId(): String {
+        events?.add("deviceIdProvider.getDeviceId")
+        return "device-123"
+    }
 }
 
-class FakeCredentialStore : CredentialStore {
+class FakeCredentialStore(private val events: MutableList<String>? = null) : CredentialStore {
     var savedCredentials: Credentials? = null
     var throwException: Throwable? = null
 
     override suspend fun save(credentials: Credentials) {
+        events?.add("credentialStore.save")
         if (throwException != null) throw throwException!!
         savedCredentials = credentials
     }
@@ -52,11 +57,12 @@ class FakeCredentialStore : CredentialStore {
     override suspend fun clear() {}
 }
 
-class FakeSessionMetadataStore : SessionMetadataStore {
+class FakeSessionMetadataStore(private val events: MutableList<String>? = null) : SessionMetadataStore {
     var savedSession: Session? = null
     var throwException: Throwable? = null
 
     override suspend fun save(session: Session) {
+        events?.add("sessionMetadataStore.save")
         if (throwException != null) throw throwException!!
         savedSession = session
     }
@@ -64,9 +70,10 @@ class FakeSessionMetadataStore : SessionMetadataStore {
     override suspend fun clear() {}
 }
 
-class FakeSessionManager : SessionManager(FakeTokenManager(), FakeAuthRepository()) {
+class FakeSessionManager(private val events: MutableList<String>? = null) : SessionManager(FakeTokenManager(), FakeAuthRepository()) {
     var capturedAuthSession: AuthSession? = null
     override fun onLogin(session: AuthSession) {
+        events?.add("sessionManager.onLogin")
         capturedAuthSession = session
     }
 }
@@ -77,14 +84,15 @@ class FakeTokenManager : TokenManager {
     override suspend fun clear() {}
 }
 
-
 class LoginUseCaseImplTest {
 
-    private val authRepository = FakeAuthRepository()
-    private val deviceIdProvider = FakeDeviceIdProvider()
-    private val credentialStore = FakeCredentialStore()
-    private val sessionMetadataStore = FakeSessionMetadataStore()
-    private val sessionManager = FakeSessionManager()
+    private val events = mutableListOf<String>()
+    
+    private val authRepository = FakeAuthRepository(events)
+    private val deviceIdProvider = FakeDeviceIdProvider(events)
+    private val credentialStore = FakeCredentialStore(events)
+    private val sessionMetadataStore = FakeSessionMetadataStore(events)
+    private val sessionManager = FakeSessionManager(events)
 
     private val useCase = LoginUseCaseImpl(
         authRepository,
@@ -95,39 +103,52 @@ class LoginUseCaseImplTest {
     )
 
     private val sampleSession = AuthSession(
-        user = User("1", "test@test.com", "Test"),
-        session = Session("sid-123", "test-device-id", "1"),
-        credentials = Credentials("acc", "ref", Instant.now())
+        user = User("user-123", "user@example.com", "Anand"),
+        session = Session("session-123", "device-123", "user-123"),
+        credentials = Credentials("access-token", "refresh-token", Instant.parse("2026-09-19T12:00:00Z"))
     )
 
     @Test
-    fun `Successful login uses DeviceIdProvider, AuthRepository receives correct request, saves metadata, and updates SessionManager`() = runTest {
+    fun `Successful login persists credentials and session and updates SessionManager with EXACT ordering`() = runTest {
         authRepository.authSessionToReturn = sampleSession
 
-        val result = useCase("test@test.com", "password")
+        val result = useCase("user@example.com", "password")
 
-        // 1. DeviceIdProvider was called, and returned deviceId is placed into LoginRequest
-        assertEquals("test-device-id", authRepository.capturedLoginRequest?.deviceId)
-        
-        // 3/4. AuthRepository receives the correct email/password
-        assertEquals("test@test.com", authRepository.capturedLoginRequest?.email)
+        // 1. result equals expected AuthSession.
+        assertEquals(sampleSession, result)
+
+        // 2. DeviceIdProvider was called (verified via events list below)
+        // 3. AuthRepository received correct parameters
+        assertEquals("device-123", authRepository.capturedLoginRequest?.deviceId)
+        assertEquals("user@example.com", authRepository.capturedLoginRequest?.email)
         assertEquals("password", authRepository.capturedLoginRequest?.password)
 
-        // 5. Credentials are persisted after successful login
+        // 4. CredentialStore received expected credentials
         assertEquals(sampleSession.credentials, credentialStore.savedCredentials)
 
-        // 6. Session metadata is persisted after successful login
+        // 5. SessionMetadataStore received expected session
         assertEquals(sampleSession.session, sessionMetadataStore.savedSession)
 
-        // 7. SessionManager.onLogin() is called after persistence succeeds
+        // 6. SessionManager.onLogin() received expected AuthSession
         assertEquals(sampleSession, sessionManager.capturedAuthSession)
 
-        // 8. AuthSession returned by AuthRepository is returned by LoginUseCase
-        assertEquals(sampleSession, result)
+        // VERIFY ORDERING INVARIANT:
+        // SessionManager.onLogin() is called only after:
+        // 1. credentials are successfully persisted
+        // 2. session metadata is successfully persisted
+        val expectedOrder = listOf(
+            "deviceIdProvider.getDeviceId",
+            "authRepository.login",
+            "credentialStore.save",
+            "sessionMetadataStore.save",
+            "sessionManager.onLogin"
+        )
+        
+        assertEquals(expectedOrder, events)
     }
 
     @Test
-    fun `AuthException from AuthRepository propagates`() = runTest {
+    fun `AuthException from AuthRepository propagates and stops execution`() = runTest {
         val authException = AuthException(AuthError.InvalidCredentials)
         authRepository.throwException = authException
 
@@ -142,10 +163,16 @@ class LoginUseCaseImplTest {
         assertNull(credentialStore.savedCredentials)
         assertNull(sessionMetadataStore.savedSession)
         assertNull(sessionManager.capturedAuthSession)
+        
+        val expectedEvents = listOf(
+            "deviceIdProvider.getDeviceId",
+            "authRepository.login"
+        )
+        assertEquals(expectedEvents, events)
     }
 
     @Test
-    fun `Credential save failure prevents SessionMetadataStore and SessionManager execution`() = runTest {
+    fun `CredentialStore save failure prevents SessionMetadataStore and SessionManager execution`() = runTest {
         authRepository.authSessionToReturn = sampleSession
         val exception = RuntimeException("Storage full")
         credentialStore.throwException = exception
@@ -160,6 +187,13 @@ class LoginUseCaseImplTest {
         assertEquals(exception, caught)
         assertNull(sessionMetadataStore.savedSession) 
         assertNull(sessionManager.capturedAuthSession)
+        
+        val expectedEvents = listOf(
+            "deviceIdProvider.getDeviceId",
+            "authRepository.login",
+            "credentialStore.save"
+        )
+        assertEquals(expectedEvents, events)
     }
 
     @Test
@@ -176,8 +210,16 @@ class LoginUseCaseImplTest {
         }
 
         assertEquals(exception, caught)
-        assertEquals(sampleSession.credentials, credentialStore.savedCredentials) // Passed cred store
-        assertNull(sessionManager.capturedAuthSession) // But never reached session manager
+        assertEquals(sampleSession.credentials, credentialStore.savedCredentials) 
+        assertNull(sessionManager.capturedAuthSession) 
+        
+        val expectedEvents = listOf(
+            "deviceIdProvider.getDeviceId",
+            "authRepository.login",
+            "credentialStore.save",
+            "sessionMetadataStore.save"
+        )
+        assertEquals(expectedEvents, events)
     }
 
     @Test
