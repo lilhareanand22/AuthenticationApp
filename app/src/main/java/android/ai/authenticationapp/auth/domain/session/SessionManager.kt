@@ -14,7 +14,7 @@ import kotlinx.coroutines.sync.withLock
 /**
  * Domain layer: Orchestrates application-wide authentication state and startup session restoration.
  */
-class SessionManager(
+open class SessionManager(
     private val tokenManager: TokenManager,
     private val authRepository: AuthRepository,
 ) {
@@ -80,7 +80,7 @@ class SessionManager(
     /**
      * Called by LoginUseCase upon successful login completion.
      */
-    fun onLogin(session: AuthSession) {
+    open fun onLogin(session: AuthSession) {
         _authState.value = AuthenticationState.Authenticated(session.user)
     }
 
