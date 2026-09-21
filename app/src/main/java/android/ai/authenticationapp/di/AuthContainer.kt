@@ -17,6 +17,7 @@ import android.ai.authenticationapp.auth.data.repository.DummyJsonAuthRepository
 import android.ai.authenticationapp.auth.data.session.DummyJsonSessionMetadataProvider
 import android.ai.authenticationapp.auth.data.session.SessionMetadataProvider
 import android.ai.authenticationapp.auth.domain.device.DeviceIdProvider
+import android.ai.authenticationapp.auth.domain.model.User
 import android.ai.authenticationapp.auth.domain.repository.AuthRepository
 import android.ai.authenticationapp.auth.domain.session.SessionManager
 import android.ai.authenticationapp.auth.domain.session.TokenExpiryPolicy
@@ -25,6 +26,7 @@ import android.ai.authenticationapp.auth.domain.session.TokenManagerImpl
 import android.ai.authenticationapp.auth.domain.usecase.LoginUseCase
 import android.ai.authenticationapp.auth.domain.usecase.LoginUseCaseImpl
 import android.ai.authenticationapp.auth.domain.util.TimeProvider
+import android.ai.authenticationapp.auth.presentation.dashboard.DashboardViewModel
 import android.ai.authenticationapp.auth.presentation.login.LoginViewModel
 import android.ai.authenticationapp.auth.security.AndroidKeystoreEncryption
 import android.ai.authenticationapp.auth.security.CredentialStore
@@ -139,6 +141,20 @@ class AuthContainer(private val context: Context) {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(LoginViewModel::class.java)) {
                 return LoginViewModel(loginUseCase) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
+        }
+    }
+
+    // Temporary solution for injecting the User into Dashboard until full restoration is built
+    var currentUserForDashboard: User? = null
+
+    val dashboardViewModelFactory = object : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
+                val user = requireNotNull(currentUserForDashboard) { "User must be set before navigating to Dashboard" }
+                return DashboardViewModel(user) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }

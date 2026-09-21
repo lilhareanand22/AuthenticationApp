@@ -81,7 +81,7 @@ open class SessionManager(
      * Called by LoginUseCase upon successful login completion.
      */
     open fun onLogin(session: AuthSession) {
- //       _authState.value = AuthenticationState.Authenticated(session.user)
+        _authState.value = AuthenticationState.Authenticated(session.user)
     }
 
     /**
