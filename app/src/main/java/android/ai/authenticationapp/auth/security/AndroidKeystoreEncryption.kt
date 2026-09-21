@@ -4,7 +4,6 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import java.security.KeyStore
-import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -52,12 +51,14 @@ class AndroidKeystoreEncryption : Encryption {
 
     override fun encrypt(plainText: String): String {
         try {
-            val iv = ByteArray(GCM_IV_LENGTH)
-            SecureRandom().nextBytes(iv)
-
             val cipher = Cipher.getInstance(TRANSFORMATION)
-            val spec = GCMParameterSpec(GCM_TAG_LENGTH, iv)
-            cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey(), spec)
+            
+            // Do not pass an IV spec for encryption when using Android Keystore.
+            // Android Keystore requires generating its own IV for security.
+            cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
+
+            // Get the generated IV
+            val iv = cipher.iv
 
             val cipherText = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
 
