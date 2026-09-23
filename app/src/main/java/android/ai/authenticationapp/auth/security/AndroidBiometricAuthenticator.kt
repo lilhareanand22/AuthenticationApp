@@ -11,24 +11,24 @@ import kotlin.coroutines.resume
  * Security layer: Android-specific implementation of [BiometricAuthenticator] utilizing AndroidX Biometric.
  */
 class AndroidBiometricAuthenticator(
+    private val activity: FragmentActivity,
     private val biometricManager: BiometricManager,
 ) : BiometricAuthenticator {
 
-    override fun checkAvailability(): BiometricResult {
+    override fun checkAvailability(): BiometricAvailability {
         return when (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)) {
-            BiometricManager.BIOMETRIC_SUCCESS -> BiometricResult.Success
-            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> BiometricResult.NotAvailable
-            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> BiometricResult.NotAvailable
-            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> BiometricResult.NotEnrolled
-            BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -> BiometricResult.NotAvailable
-            else -> BiometricResult.Failed
+            BiometricManager.BIOMETRIC_SUCCESS -> BiometricAvailability.Available
+            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> BiometricAvailability.NotAvailable
+            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> BiometricAvailability.NotAvailable
+            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> BiometricAvailability.NotEnrolled
+            BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -> BiometricAvailability.SecurityUpdateRequired
+            else -> BiometricAvailability.Error(-1, "Unknown Biometric Error")
         }
     }
 
     override suspend fun authenticate(
-        activity: FragmentActivity,
         title: String,
-        subtitle: String?
+        subtitle: String
     ): BiometricResult = suspendCancellableCoroutine { continuation ->
 
         val executor = ContextCompat.getMainExecutor(activity)
@@ -46,12 +46,10 @@ class AndroidBiometricAuthenticator(
                         BiometricPrompt.ERROR_USER_CANCELED,
                         BiometricPrompt.ERROR_NEGATIVE_BUTTON,
                         BiometricPrompt.ERROR_CANCELED -> BiometricResult.Cancelled
-                        BiometricPrompt.ERROR_LOCKOUT,
-                        BiometricPrompt.ERROR_LOCKOUT_PERMANENT -> BiometricResult.LockedOut
                         BiometricPrompt.ERROR_HW_NOT_PRESENT,
                         BiometricPrompt.ERROR_HW_UNAVAILABLE -> BiometricResult.NotAvailable
                         BiometricPrompt.ERROR_NO_BIOMETRICS -> BiometricResult.NotEnrolled
-                        else -> BiometricResult.Error(errorCode, errString)
+                        else -> BiometricResult.Error(errorCode, errString.toString())
                     }
                     continuation.resume(biometricResult)
                 }

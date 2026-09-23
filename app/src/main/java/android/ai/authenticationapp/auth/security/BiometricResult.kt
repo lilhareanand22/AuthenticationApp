@@ -5,10 +5,9 @@ package android.ai.authenticationapp.auth.security
  */
 sealed interface BiometricResult {
     data object Success : BiometricResult
-    data object Failed : BiometricResult
     data object Cancelled : BiometricResult
     data object NotAvailable : BiometricResult
     data object NotEnrolled : BiometricResult
     data object LockedOut : BiometricResult
-    data class Error(val errorCode: Int, val errString: CharSequence) : BiometricResult
+    data class Error(val code: Int, val message: String?) : BiometricResult
 }
