@@ -25,6 +25,8 @@ import android.ai.authenticationapp.auth.domain.session.TokenManager
 import android.ai.authenticationapp.auth.domain.session.TokenManagerImpl
 import android.ai.authenticationapp.auth.domain.usecase.LoginUseCase
 import android.ai.authenticationapp.auth.domain.usecase.LoginUseCaseImpl
+import android.ai.authenticationapp.auth.domain.usecase.LogoutUseCase
+import android.ai.authenticationapp.auth.domain.usecase.LogoutUseCaseImpl
 import android.ai.authenticationapp.auth.domain.util.TimeProvider
 import android.ai.authenticationapp.auth.presentation.dashboard.DashboardViewModel
 import android.ai.authenticationapp.auth.presentation.login.LoginViewModel
@@ -135,6 +137,15 @@ class AuthContainer(private val context: Context) {
         )
     }
 
+    val logoutUseCase: LogoutUseCase by lazy {
+        LogoutUseCaseImpl(
+            authRepository = authRepository,
+            tokenManager = tokenManager,
+            sessionMetadataStore = sessionMetadataStore,
+            sessionManager = sessionManager
+        )
+    }
+
     // 6. Presentation Factories
     val loginViewModelFactory = object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
@@ -154,7 +165,7 @@ class AuthContainer(private val context: Context) {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
                 val user = requireNotNull(currentUserForDashboard) { "User must be set before navigating to Dashboard" }
-                return DashboardViewModel(user) as T
+                return DashboardViewModel(user, logoutUseCase) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }

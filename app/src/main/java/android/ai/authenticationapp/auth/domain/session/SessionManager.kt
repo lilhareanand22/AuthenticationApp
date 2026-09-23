@@ -85,6 +85,13 @@ open class SessionManager(
     }
 
     /**
+     * Transitions state to Unauthenticated actively via LogoutUseCase.
+     */
+    open fun onLogout() {
+        _authState.value = AuthenticationState.Unauthenticated
+    }
+
+    /**
      * Transitions state to Unauthenticated on terminal auth failure.
      * (Logout coordination and TokenManager.clear() belong to LogoutUseCase, not here).
      */

@@ -42,6 +42,10 @@ class FakeUserRepository : AuthRepository {
 
     override suspend fun login(request: LoginRequest): AuthSession { throw NotImplementedError() }
     override suspend fun refreshToken(refreshToken: String): Credentials { throw NotImplementedError() }
+    override suspend fun logout(sessionId: String, deviceId: String) { throw NotImplementedError() }
+    override suspend fun logout(sessionId: String, deviceId: String) {
+
+    }
 }
 
 class SessionManagerTest {

@@ -19,4 +19,9 @@ interface AuthRepository {
     suspend fun refreshToken(
         refreshToken: String,
     ): Credentials
+
+    suspend fun logout(
+        sessionId: String,
+        deviceId: String
+    )
 }

@@ -30,26 +30,19 @@ fun DashboardScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (state.user != null) {
-            val displayName = state.user.name ?: "User"
-            Text(
-                text = "Welcome, $displayName",
-                style = MaterialTheme.typography.headlineMedium
-            )
+        val displayName = state.user.name ?: "User"
+        Text(
+            text = "Welcome, $displayName",
+            style = MaterialTheme.typography.headlineMedium
+        )
 
-            Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = state.user.email,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        } else {
-            Text(
-                text = "Welcome!",
-                style = MaterialTheme.typography.headlineMedium
-            )
-        }
+        Text(
+            text = state.user.email,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         Spacer(modifier = Modifier.height(32.dp))
 

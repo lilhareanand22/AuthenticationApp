@@ -35,6 +35,7 @@ class FakeAuthRepository(private val events: MutableList<String>? = null) : Auth
 
     override suspend fun getCurrentUser(): User = throw NotImplementedError()
     override suspend fun refreshToken(refreshToken: String): Credentials = throw NotImplementedError()
+    override suspend fun logout(sessionId: String, deviceId: String) = throw NotImplementedError()
 }
 
 class FakeDeviceIdProvider(private val events: MutableList<String>? = null) : DeviceIdProvider {

@@ -73,4 +73,10 @@ class DummyJsonAuthRepositoryAdapter(
                 sessionMetadataProvider.getAccessTokenExpiresAt()
         )
     }
+
+    override suspend fun logout(sessionId: String, deviceId: String) {
+        // DUMMYJSON LIMITATION: The mock backend does not support server-side session revocation.
+        // We fulfill the domain contract by performing no actual network operation here, safely 
+        // allowing the domain layer to continue executing local logout persistence wipe.
+    }
 }

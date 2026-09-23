@@ -57,6 +57,8 @@ class FakeAuthRepository : AuthRepository {
         }
         return refreshDeferred.await()
     }
+    
+    override suspend fun logout(sessionId: String, deviceId: String) { throw NotImplementedError() }
 }
 
 class TokenManagerImplTest {
