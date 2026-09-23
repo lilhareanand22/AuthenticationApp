@@ -46,6 +46,8 @@ import android.ai.authenticationapp.auth.security.SecureStorage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import android.ai.authenticationapp.network.AuthAuthenticator
+import android.ai.authenticationapp.network.AuthInterceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -77,8 +79,18 @@ class AuthContainer(private val context: Context) {
     }
 
     // 2. Networking
+    val authInterceptor: AuthInterceptor by lazy {
+        AuthInterceptor { tokenManager }
+    }
+
+    val authAuthenticator: AuthAuthenticator by lazy {
+        AuthAuthenticator { tokenManager }
+    }
+
     private val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
+            .authenticator(authAuthenticator)
             .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY })
             .build()
     }

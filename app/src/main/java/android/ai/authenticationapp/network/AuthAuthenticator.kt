@@ -10,14 +10,16 @@ import okhttp3.Route
 /**
  * Network layer: Authenticator to automatically handle HTTP 401 Unauthorized responses.
  * Triggers a centralized token refresh and retries the original request with the new token.
+ * Uses a provider lambda to prevent circular dependency issues during DI graph construction.
  */
 class AuthAuthenticator(
-    private val tokenManager: TokenManager,
+    private val tokenManagerProvider: () -> TokenManager,
 ) : Authenticator {
 
+    // Secondary constructor for direct TokenManager injection (e.g., in unit tests)
+    constructor(tokenManager: TokenManager) : this({ tokenManager })
+
     override fun authenticate(route: Route?, response: Response): Request? {
-        // Enforce retry-once by checking if the response has a priorResponse.
-        // If priorResponse is not null, it means we already tried to authenticate this request.
         val path = response.request.url.encodedPath
 
         if (path.endsWith("/auth/refresh")) {
@@ -30,7 +32,7 @@ class AuthAuthenticator(
 
         // Bridge synchronous OkHttp authenticator with suspend function using runBlocking
         val newToken = runBlocking {
-            tokenManager.refresh()
+            tokenManagerProvider().refresh()
         }
 
         if (newToken == null) {

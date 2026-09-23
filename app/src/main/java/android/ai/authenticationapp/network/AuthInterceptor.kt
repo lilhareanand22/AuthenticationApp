@@ -6,12 +6,15 @@ import okhttp3.Interceptor
 import okhttp3.Response
 
 /**
- * Network layer: Configures network clients, interceptors, and authenticators for API communication.
- * Injects the authentication token into outgoing requests.
+ * Network layer: Injects the authentication token into outgoing HTTP requests.
+ * Uses a provider lambda to prevent circular dependency issues during DI graph construction.
  */
 class AuthInterceptor(
-    private val tokenManager: TokenManager,
+    private val tokenManagerProvider: () -> TokenManager,
 ) : Interceptor {
+
+    // Secondary constructor for direct TokenManager injection (e.g., in unit tests)
+    constructor(tokenManager: TokenManager) : this({ tokenManager })
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
@@ -23,9 +26,9 @@ class AuthInterceptor(
         }
 
         // Bridge synchronous OkHttp interceptor with suspend function using runBlocking.
-        // runBlocking respects thread interruption, preserving OkHttp's cancellation mechanism.
+        // Lazy evaluation of tokenManager ensures DI graph is fully initialized.
         val token = runBlocking {
-            tokenManager.getValidAccessToken()
+            tokenManagerProvider().getValidAccessToken()
         }
 
         if (token != null) {
