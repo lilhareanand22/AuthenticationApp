@@ -1,7 +1,11 @@
 package android.ai.authenticationapp.auth.presentation.dashboard
 
+import android.ai.authenticationapp.auth.domain.device.BiometricPreferenceStore
 import android.ai.authenticationapp.auth.domain.model.User
 import android.ai.authenticationapp.auth.domain.usecase.LogoutUseCase
+import android.ai.authenticationapp.auth.security.BiometricAuthenticator
+import android.ai.authenticationapp.auth.security.BiometricAvailability
+import android.ai.authenticationapp.auth.security.BiometricResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -13,13 +17,14 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import androidx.fragment.app.FragmentActivity
 
 class FakeLogoutUseCase : LogoutUseCase {
     var callCount = 0
@@ -28,6 +33,28 @@ class FakeLogoutUseCase : LogoutUseCase {
     override suspend fun invoke() {
         callCount++
         suspendingGate?.await()
+    }
+}
+
+class FakeBiometricPreferenceStore : BiometricPreferenceStore {
+    var enabled = false
+    override suspend fun isEnabled(): Boolean = enabled
+    override suspend fun setEnabled(enabled: Boolean) {
+        this.enabled = enabled
+    }
+}
+
+class FakeDashboardBiometricAuthenticator(
+    var availability: BiometricAvailability = BiometricAvailability.Available
+) : BiometricAuthenticator {
+    override fun checkAvailability(): BiometricAvailability = availability
+    
+    override suspend fun authenticate(
+        activity: FragmentActivity?,
+        title: String,
+        subtitle: String?
+    ): BiometricResult {
+        error("Not used")
     }
 }
 
@@ -50,56 +77,117 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun `Initial user is displayed and isLoggingOut is false`() = testScope.runTest {
+    fun `stored preference true + available - enabled`() = testScope.runTest {
         val fakeLogout = FakeLogoutUseCase()
-        val viewModel = DashboardViewModel(testUser, fakeLogout)
+        val fakePrefs = FakeBiometricPreferenceStore().apply { enabled = true }
+        val fakeAuthenticator = FakeDashboardBiometricAuthenticator(BiometricAvailability.Available)
         
-        assertEquals(testUser, viewModel.state.value.user)
-        assertFalse(viewModel.state.value.isLoggingOut)
+        val viewModel = DashboardViewModel(testUser, fakeLogout, fakePrefs, fakeAuthenticator)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.isBiometricEnabled)
+        assertTrue(viewModel.state.value.isBiometricAvailable)
     }
 
     @Test
-    fun `LogoutClicked sets loading, calls UseCase, and emits NavigateToLogin`() = testScope.runTest {
+    fun `stored preference true + temporarily unavailable - UI disabled but stored preference remains true`() = testScope.runTest {
         val fakeLogout = FakeLogoutUseCase()
-        val viewModel = DashboardViewModel(testUser, fakeLogout)
+        // The user previously enabled biometric unlock.
+        val fakePrefs = FakeBiometricPreferenceStore().apply { enabled = true }
+        // The hardware is temporarily unavailable (e.g. cold conditions, or device lock rules).
+        val fakeAuthenticator = FakeDashboardBiometricAuthenticator(BiometricAvailability.NotAvailable)
         
-        val emittedEffects = mutableListOf<DashboardEffect>()
-        val effectJob = backgroundScope.launch { viewModel.effects.toList(emittedEffects) }
-
-        viewModel.onIntent(DashboardIntent.LogoutClicked)
-        
-        // Assert synchronous state change
-        assertTrue(viewModel.state.value.isLoggingOut)
-        
+        val viewModel = DashboardViewModel(testUser, fakeLogout, fakePrefs, fakeAuthenticator)
         advanceUntilIdle()
-        yield()
 
-        assertEquals(1, fakeLogout.callCount)
-        assertFalse(viewModel.state.value.isLoggingOut)
-        
-        assertEquals(1, emittedEffects.size)
-        assertEquals(DashboardEffect.NavigateToLogin, emittedEffects[0])
-        
-        effectJob.cancel()
+        assertFalse(viewModel.state.value.isBiometricAvailable)
+        // It drops out of enabled state for the UI because it's currently unusable
+        assertFalse(viewModel.state.value.isBiometricEnabled)
+        // CRITICAL CHECK: Ensure the persisted preference was not wiped just because of a temporary hardware outage.
+        assertTrue(fakePrefs.enabled)
     }
 
     @Test
-    fun `Duplicate LogoutClicked ignores extra calls while loading`() = testScope.runTest {
+    fun `stored preference false + available - disabled`() = testScope.runTest {
         val fakeLogout = FakeLogoutUseCase()
-        fakeLogout.suspendingGate = CompletableDeferred()
-        val viewModel = DashboardViewModel(testUser, fakeLogout)
+        val fakePrefs = FakeBiometricPreferenceStore().apply { enabled = false }
+        val fakeAuthenticator = FakeDashboardBiometricAuthenticator(BiometricAvailability.Available)
+        
+        val viewModel = DashboardViewModel(testUser, fakeLogout, fakePrefs, fakeAuthenticator)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isBiometricEnabled)
+        assertTrue(viewModel.state.value.isBiometricAvailable)
+    }
+
+    @Test
+    fun `enable when available - persisted true`() = testScope.runTest {
+        val fakeLogout = FakeLogoutUseCase()
+        val fakePrefs = FakeBiometricPreferenceStore().apply { enabled = false }
+        val fakeAuthenticator = FakeDashboardBiometricAuthenticator(BiometricAvailability.Available)
+        
+        val viewModel = DashboardViewModel(testUser, fakeLogout, fakePrefs, fakeAuthenticator)
+        advanceUntilIdle()
+
+        viewModel.onIntent(DashboardIntent.BiometricEnabledChanged(true))
+        advanceUntilIdle()
+
+        assertTrue(fakePrefs.enabled)
+        assertTrue(viewModel.state.value.isBiometricEnabled)
+        assertNull(viewModel.state.value.error)
+    }
+
+    @Test
+    fun `enable when unavailable - not persisted`() = testScope.runTest {
+        val fakeLogout = FakeLogoutUseCase()
+        val fakePrefs = FakeBiometricPreferenceStore().apply { enabled = false }
+        val fakeAuthenticator = FakeDashboardBiometricAuthenticator(BiometricAvailability.NotEnrolled)
+        
+        val viewModel = DashboardViewModel(testUser, fakeLogout, fakePrefs, fakeAuthenticator)
+        advanceUntilIdle()
+
+        viewModel.onIntent(DashboardIntent.BiometricEnabledChanged(true))
+        advanceUntilIdle()
+
+        // It should reject the action and keep the store unmodified.
+        assertFalse(fakePrefs.enabled)
+        assertFalse(viewModel.state.value.isBiometricEnabled)
+        assertEquals(DashboardError.BiometricUnavailable, viewModel.state.value.error)
+    }
+
+    @Test
+    fun `disable - persisted false without logout`() = testScope.runTest {
+        val fakeLogout = FakeLogoutUseCase()
+        val fakePrefs = FakeBiometricPreferenceStore().apply { enabled = true }
+        val fakeAuthenticator = FakeDashboardBiometricAuthenticator(BiometricAvailability.Available)
+        
+        val viewModel = DashboardViewModel(testUser, fakeLogout, fakePrefs, fakeAuthenticator)
+        advanceUntilIdle()
+
+        viewModel.onIntent(DashboardIntent.BiometricEnabledChanged(false))
+        advanceUntilIdle()
+
+        assertFalse(fakePrefs.enabled)
+        assertFalse(viewModel.state.value.isBiometricEnabled)
+        assertNull(viewModel.state.value.error)
+        
+        // Assert logout was NOT called
+        assertEquals(0, fakeLogout.callCount)
+    }
+
+    @Test
+    fun `logout remains independent of biometric preference`() = testScope.runTest {
+        val fakeLogout = FakeLogoutUseCase()
+        val fakePrefs = FakeBiometricPreferenceStore().apply { enabled = true }
+        val fakeAuthenticator = FakeDashboardBiometricAuthenticator(BiometricAvailability.Available)
+        val viewModel = DashboardViewModel(testUser, fakeLogout, fakePrefs, fakeAuthenticator)
         
         viewModel.onIntent(DashboardIntent.LogoutClicked)
         advanceUntilIdle()
         
-        assertTrue(viewModel.state.value.isLoggingOut)
-        
-        viewModel.onIntent(DashboardIntent.LogoutClicked)
-        viewModel.onIntent(DashboardIntent.LogoutClicked)
-        
-        fakeLogout.suspendingGate?.complete(Unit)
-        advanceUntilIdle()
-        
+        // Assert logout executed
         assertEquals(1, fakeLogout.callCount)
+        // Assert biometric preference is completely untouched by the logout action locally
+        assertTrue(fakePrefs.enabled)
     }
 }

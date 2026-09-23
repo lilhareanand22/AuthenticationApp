@@ -14,6 +14,24 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
+import android.ai.authenticationapp.auth.domain.device.BiometricPreferenceStore
+import android.ai.authenticationapp.auth.domain.lock.LocalLockManager
+import android.ai.authenticationapp.auth.domain.lock.LocalUnlockState
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
+class FakeSessionBiometricPreferenceStore : BiometricPreferenceStore {
+    var enabled = false
+    override suspend fun isEnabled(): Boolean = enabled
+    override suspend fun setEnabled(enabled: Boolean) { this.enabled = enabled }
+}
+
+class FakeSessionLocalLockManager : LocalLockManager {
+    override val state: StateFlow<LocalUnlockState> = MutableStateFlow(LocalUnlockState.Unlocked)
+    var lockedCount = 0
+    override fun lock() { lockedCount++ }
+    override fun unlock() { }
+}
 
 class FakeTokenManager : TokenManager {
     var tokenToReturn: String? = null
@@ -49,7 +67,9 @@ class SessionManagerTest {
 
     private val fakeTokenManager = FakeTokenManager()
     private val fakeAuthRepository = FakeUserRepository()
-    private val sessionManager = SessionManager(fakeTokenManager, fakeAuthRepository)
+    private val fakePrefs = FakeSessionBiometricPreferenceStore()
+    private val fakeLock = FakeSessionLocalLockManager()
+    private val sessionManager = SessionManager(fakeTokenManager, fakeAuthRepository, fakePrefs, fakeLock)
 
     @Test
     fun `Initial state is Unknown`() = runTest {
@@ -66,16 +86,32 @@ class SessionManagerTest {
     }
 
     @Test
-    fun `restoreSession with valid tokens fetches user and becomes Authenticated`() = runTest {
+    fun `restoreSession with valid tokens fetches user and becomes Authenticated but does NOT lock if biometric disabled`() = runTest {
         fakeTokenManager.tokenToReturn = "valid_token"
         val expectedUser = User("2", "a@a.com", "Name")
         fakeAuthRepository.userToReturn = expectedUser
+        fakePrefs.enabled = false
         
         sessionManager.restoreSession()
         
         val state = sessionManager.authState.value
         assertTrue(state is AuthenticationState.Authenticated)
         assertEquals(expectedUser, (state as AuthenticationState.Authenticated).user)
+        assertEquals(0, fakeLock.lockedCount)
+    }
+
+    @Test
+    fun `restoreSession with valid tokens fetches user and locks if biometric enabled`() = runTest {
+        fakeTokenManager.tokenToReturn = "valid_token"
+        val expectedUser = User("2", "a@a.com", "Name")
+        fakeAuthRepository.userToReturn = expectedUser
+        fakePrefs.enabled = true
+        
+        sessionManager.restoreSession()
+        
+        val state = sessionManager.authState.value
+        assertTrue(state is AuthenticationState.Authenticated)
+        assertEquals(1, fakeLock.lockedCount)
     }
 
     @Test

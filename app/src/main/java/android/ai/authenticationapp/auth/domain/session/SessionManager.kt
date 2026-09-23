@@ -1,7 +1,9 @@
 package android.ai.authenticationapp.auth.domain.session
 
+import android.ai.authenticationapp.auth.domain.device.BiometricPreferenceStore
 import android.ai.authenticationapp.auth.domain.error.AuthError
 import android.ai.authenticationapp.auth.domain.error.AuthException
+import android.ai.authenticationapp.auth.domain.lock.LocalLockManager
 import android.ai.authenticationapp.auth.domain.model.AuthSession
 import android.ai.authenticationapp.auth.domain.repository.AuthRepository
 import kotlinx.coroutines.CancellationException
@@ -17,6 +19,8 @@ import kotlinx.coroutines.sync.withLock
 open class SessionManager(
     private val tokenManager: TokenManager,
     private val authRepository: AuthRepository,
+    private val biometricPreferenceStore: BiometricPreferenceStore,
+    private val localLockManager: LocalLockManager
 ) {
 
     private val _authState = MutableStateFlow<AuthenticationState>(AuthenticationState.Unknown)
@@ -41,6 +45,11 @@ open class SessionManager(
 
                 // Tokens exist and are valid/refreshed. We need the current User profile.
                 val user = authRepository.getCurrentUser()
+                
+                if (biometricPreferenceStore.isEnabled()) {
+                    localLockManager.lock()
+                }
+
                 _authState.value = AuthenticationState.Authenticated(user)
 
             } catch (e: CancellationException) {

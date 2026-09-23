@@ -1,5 +1,7 @@
 package android.ai.authenticationapp.auth.presentation.login
 
+import androidx.fragment.app.FragmentActivity
+
 /**
  * MVI Intents representing user actions on the LoginScreen.
  */
@@ -7,7 +9,7 @@ sealed interface LoginIntent {
     data class EmailChanged(val email: String) : LoginIntent
     data class PasswordChanged(val password: String) : LoginIntent
     data object LoginClicked : LoginIntent
-    data object BiometricClicked : LoginIntent
+    data class BiometricClicked(val activity: FragmentActivity? = null) : LoginIntent
     data object GoogleLoginClicked : LoginIntent
 }
 

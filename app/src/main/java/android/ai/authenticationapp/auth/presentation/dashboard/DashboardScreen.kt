@@ -17,6 +17,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Switch
+
 @Composable
 fun DashboardScreen(
     state: DashboardState,
@@ -46,10 +49,39 @@ fun DashboardScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        if (state.isBiometricAvailable) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Biometric Unlock",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "Use biometrics to unlock your existing session.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = state.isBiometricEnabled,
+                    onCheckedChange = { onIntent(DashboardIntent.BiometricEnabledChanged(it)) }
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+
         if (state.error != null) {
             val errorMessage = when (state.error) {
                 DashboardError.Network -> "Network error during logout."
                 DashboardError.Server -> "Server error during logout."
+                DashboardError.BiometricUnavailable -> "Biometric hardware is not currently available."
                 DashboardError.Unknown -> "Unknown error occurred."
             }
             Text(

@@ -1,9 +1,12 @@
 package android.ai.authenticationapp.auth.domain.usecase
 
 import android.ai.authenticationapp.auth.data.local.SessionMetadataStore
+import android.ai.authenticationapp.auth.domain.device.BiometricPreferenceStore
 import android.ai.authenticationapp.auth.domain.device.DeviceIdProvider
 import android.ai.authenticationapp.auth.domain.error.AuthError
 import android.ai.authenticationapp.auth.domain.error.AuthException
+import android.ai.authenticationapp.auth.domain.lock.LocalLockManager
+import android.ai.authenticationapp.auth.domain.lock.LocalUnlockState
 import android.ai.authenticationapp.auth.domain.model.AuthSession
 import android.ai.authenticationapp.auth.domain.model.Credentials
 import android.ai.authenticationapp.auth.domain.model.LoginRequest
@@ -14,6 +17,8 @@ import android.ai.authenticationapp.auth.domain.session.SessionManager
 import android.ai.authenticationapp.auth.domain.session.TokenManager
 import android.ai.authenticationapp.auth.security.CredentialStore
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -71,7 +76,23 @@ class FakeSessionMetadataStore(private val events: MutableList<String>? = null) 
     override suspend fun clear() {}
 }
 
-class FakeSessionManager(private val events: MutableList<String>? = null) : SessionManager(FakeTokenManager(), FakeAuthRepository()) {
+class FakeLoginBiometricPreferenceStore : BiometricPreferenceStore {
+    override suspend fun isEnabled(): Boolean = false
+    override suspend fun setEnabled(enabled: Boolean) {}
+}
+
+class FakeLoginLocalLockManager : LocalLockManager {
+    override val state: StateFlow<LocalUnlockState> = MutableStateFlow(LocalUnlockState.Unlocked)
+    override fun lock() {}
+    override fun unlock() {}
+}
+
+class FakeSessionManager(private val events: MutableList<String>? = null) : SessionManager(
+    FakeTokenManager(),
+    FakeAuthRepository(),
+    FakeLoginBiometricPreferenceStore(),
+    FakeLoginLocalLockManager()
+) {
     var capturedAuthSession: AuthSession? = null
     override fun onLogin(session: AuthSession) {
         events?.add("sessionManager.onLogin")

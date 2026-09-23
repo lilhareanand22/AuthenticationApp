@@ -1,6 +1,7 @@
 package android.ai.authenticationapp.auth.domain.usecase
 
 import android.ai.authenticationapp.auth.data.local.SessionMetadataStore
+import android.ai.authenticationapp.auth.domain.device.BiometricPreferenceStore
 import android.ai.authenticationapp.auth.domain.error.AuthError
 import android.ai.authenticationapp.auth.domain.error.AuthException
 import android.ai.authenticationapp.auth.domain.model.AuthSession
@@ -9,6 +10,7 @@ import android.ai.authenticationapp.auth.domain.model.LoginRequest
 import android.ai.authenticationapp.auth.domain.model.Session
 import android.ai.authenticationapp.auth.domain.model.User
 import android.ai.authenticationapp.auth.domain.repository.AuthRepository
+import android.ai.authenticationapp.auth.domain.lock.LocalUnlockState
 import android.ai.authenticationapp.auth.domain.session.SessionManager
 import android.ai.authenticationapp.auth.domain.session.TokenManager
 import kotlinx.coroutines.CancellationException
@@ -55,7 +57,17 @@ class FakeLogoutTokenManager : TokenManager {
     }
 }
 
-class FakeLogoutSessionManager : SessionManager(FakeLogoutTokenManager(), FakeLogoutAuthRepository()) {
+class FakeLogoutBiometricPreferenceStore : BiometricPreferenceStore {
+    override suspend fun isEnabled(): Boolean = false
+    override suspend fun setEnabled(enabled: Boolean) {}
+}
+
+class FakeLogoutSessionManager : SessionManager(
+    FakeLogoutTokenManager(),
+    FakeLogoutAuthRepository(),
+    FakeLogoutBiometricPreferenceStore(),
+    FakeUnlockLocalLockManager()
+) {
     val events = mutableListOf<String>()
     override fun onLogout() {
         events.add("sessionManager.onLogout")
@@ -70,9 +82,10 @@ class LogoutUseCaseImplTest {
         val tokenManager = FakeLogoutTokenManager()
         val sessionMetadataStore = FakeLogoutSessionMetadataStore()
         val sessionManager = FakeLogoutSessionManager()
+        val localLockManager = FakeUnlockLocalLockManager()
 
         val useCase = LogoutUseCaseImpl(
-            authRepository, tokenManager, sessionMetadataStore, sessionManager
+            authRepository, tokenManager, sessionMetadataStore, sessionManager, localLockManager
         )
 
         useCase()
@@ -83,6 +96,7 @@ class LogoutUseCaseImplTest {
         assertEquals(listOf("authRepository.logout"), authRepository.events)
         assertEquals(listOf("tokenManager.clear"), tokenManager.events)
         assertEquals(listOf("sessionManager.onLogout"), sessionManager.events)
+        assertEquals(LocalUnlockState.Unlocked, localLockManager.state.value)
     }
 
     @Test
@@ -93,9 +107,10 @@ class LogoutUseCaseImplTest {
         val tokenManager = FakeLogoutTokenManager()
         val sessionMetadataStore = FakeLogoutSessionMetadataStore()
         val sessionManager = FakeLogoutSessionManager()
+        val localLockManager = FakeUnlockLocalLockManager()
 
         val useCase = LogoutUseCaseImpl(
-            authRepository, tokenManager, sessionMetadataStore, sessionManager
+            authRepository, tokenManager, sessionMetadataStore, sessionManager, localLockManager
         )
 
         useCase()
@@ -104,6 +119,7 @@ class LogoutUseCaseImplTest {
         assertEquals(listOf("authRepository.logout"), authRepository.events)
         assertEquals(listOf("tokenManager.clear"), tokenManager.events)
         assertEquals(listOf("sessionManager.onLogout"), sessionManager.events)
+        assertEquals(LocalUnlockState.Unlocked, localLockManager.state.value)
     }
 
     @Test
@@ -114,9 +130,10 @@ class LogoutUseCaseImplTest {
         val tokenManager = FakeLogoutTokenManager()
         val sessionMetadataStore = FakeLogoutSessionMetadataStore()
         val sessionManager = FakeLogoutSessionManager()
+        val localLockManager = FakeUnlockLocalLockManager()
 
         val useCase = LogoutUseCaseImpl(
-            authRepository, tokenManager, sessionMetadataStore, sessionManager
+            authRepository, tokenManager, sessionMetadataStore, sessionManager, localLockManager
         )
 
         useCase()
@@ -125,6 +142,7 @@ class LogoutUseCaseImplTest {
         assertEquals(listOf("authRepository.logout"), authRepository.events)
         assertEquals(listOf("tokenManager.clear"), tokenManager.events)
         assertEquals(listOf("sessionManager.onLogout"), sessionManager.events)
+        assertEquals(LocalUnlockState.Unlocked, localLockManager.state.value)
     }
 
     @Test
@@ -135,9 +153,10 @@ class LogoutUseCaseImplTest {
             returnSession = null
         }
         val sessionManager = FakeLogoutSessionManager()
+        val localLockManager = FakeUnlockLocalLockManager()
 
         val useCase = LogoutUseCaseImpl(
-            authRepository, tokenManager, sessionMetadataStore, sessionManager
+            authRepository, tokenManager, sessionMetadataStore, sessionManager, localLockManager
         )
 
         useCase()
@@ -146,6 +165,7 @@ class LogoutUseCaseImplTest {
         assertEquals(emptyList<String>(), authRepository.events) // Skipped!
         assertEquals(listOf("tokenManager.clear"), tokenManager.events)
         assertEquals(listOf("sessionManager.onLogout"), sessionManager.events)
+        assertEquals(LocalUnlockState.Unlocked, localLockManager.state.value)
     }
 
     @Test
@@ -156,9 +176,10 @@ class LogoutUseCaseImplTest {
         val tokenManager = FakeLogoutTokenManager()
         val sessionMetadataStore = FakeLogoutSessionMetadataStore()
         val sessionManager = FakeLogoutSessionManager()
+        val localLockManager = FakeUnlockLocalLockManager()
 
         val useCase = LogoutUseCaseImpl(
-            authRepository, tokenManager, sessionMetadataStore, sessionManager
+            authRepository, tokenManager, sessionMetadataStore, sessionManager, localLockManager
         )
 
         var caught: Throwable? = null
@@ -175,5 +196,6 @@ class LogoutUseCaseImplTest {
         assertEquals(listOf("authRepository.logout"), authRepository.events)
         assertEquals(emptyList<String>(), tokenManager.events)
         assertEquals(emptyList<String>(), sessionManager.events)
+        assertEquals(0, localLockManager.unlockCallCount)
     }
 }

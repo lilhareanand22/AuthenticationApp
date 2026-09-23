@@ -27,8 +27,15 @@ import android.ai.authenticationapp.auth.domain.usecase.LoginUseCase
 import android.ai.authenticationapp.auth.domain.usecase.LoginUseCaseImpl
 import android.ai.authenticationapp.auth.domain.usecase.LogoutUseCase
 import android.ai.authenticationapp.auth.domain.usecase.LogoutUseCaseImpl
+import android.ai.authenticationapp.auth.domain.lock.LocalLockManager
+import android.ai.authenticationapp.auth.domain.lock.AppLifecycleLocker
+import android.ai.authenticationapp.auth.domain.lock.LocalLockManagerImpl
+import android.ai.authenticationapp.auth.presentation.lock.BiometricLockViewModel
 import android.ai.authenticationapp.auth.domain.util.TimeProvider
 import android.ai.authenticationapp.auth.presentation.dashboard.DashboardViewModel
+import androidx.biometric.BiometricManager
+import android.ai.authenticationapp.auth.security.AndroidBiometricAuthenticator
+import android.ai.authenticationapp.auth.security.BiometricAuthenticator
 import android.ai.authenticationapp.auth.presentation.login.LoginViewModel
 import android.ai.authenticationapp.auth.security.AndroidKeystoreEncryption
 import android.ai.authenticationapp.auth.security.CredentialStore
@@ -46,7 +53,13 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.time.Duration
 import java.time.Instant
 
+import android.ai.authenticationapp.auth.data.device.DataStoreBiometricPreferenceStore
+import android.ai.authenticationapp.auth.domain.device.BiometricPreferenceStore
+import android.ai.authenticationapp.auth.domain.usecase.BiometricUnlockUseCase
+import android.ai.authenticationapp.auth.domain.usecase.BiometricUnlockUseCaseImpl
+
 private val Context.appDeviceIdDataStore by preferencesDataStore(name = "device_id_prefs")
+private val Context.appBiometricDataStore by preferencesDataStore(name = "biometric_prefs")
 
 /**
  * Manual Dependency Injection container for the Authentication flow.
@@ -99,6 +112,13 @@ class AuthContainer(private val context: Context) {
     val sessionMetadataStore: SessionMetadataStore by lazy { SessionMetadataStoreImpl(context) }
     val sessionMetadataProvider: SessionMetadataProvider by lazy { DummyJsonSessionMetadataProvider(timeProvider) }
 
+    val biometricManager: BiometricManager by lazy { BiometricManager.from(context) }
+    val biometricAuthenticator: BiometricAuthenticator by lazy { AndroidBiometricAuthenticator(biometricManager) }
+    
+    val biometricPreferenceStore: BiometricPreferenceStore by lazy { 
+        DataStoreBiometricPreferenceStore(context.applicationContext.appBiometricDataStore) 
+    }
+
     // 4. Repositories (Data)
     val authRepository: AuthRepository by lazy {
         DummyJsonAuthRepositoryAdapter(
@@ -123,8 +143,14 @@ class AuthContainer(private val context: Context) {
     val sessionManager: SessionManager by lazy {
         SessionManager(
             tokenManager = tokenManager,
-            authRepository = authRepository
+            authRepository = authRepository,
+            biometricPreferenceStore = biometricPreferenceStore,
+            localLockManager = localLockManager
         )
+    }
+
+    val localLockManager: LocalLockManager by lazy {
+        LocalLockManagerImpl()
     }
 
     val loginUseCase: LoginUseCase by lazy {
@@ -142,7 +168,16 @@ class AuthContainer(private val context: Context) {
             authRepository = authRepository,
             tokenManager = tokenManager,
             sessionMetadataStore = sessionMetadataStore,
-            sessionManager = sessionManager
+            sessionManager = sessionManager,
+            localLockManager = localLockManager
+        )
+    }
+
+    val biometricUnlockUseCase: BiometricUnlockUseCase by lazy {
+        BiometricUnlockUseCaseImpl(
+            biometricPreferenceStore = biometricPreferenceStore,
+            biometricAuthenticator = biometricAuthenticator,
+            localLockManager = localLockManager
         )
     }
 
@@ -151,7 +186,7 @@ class AuthContainer(private val context: Context) {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(LoginViewModel::class.java)) {
-                return LoginViewModel(loginUseCase) as T
+                return LoginViewModel(loginUseCase, biometricAuthenticator, biometricPreferenceStore, sessionManager, authRepository) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }
@@ -165,9 +200,28 @@ class AuthContainer(private val context: Context) {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
                 val user = requireNotNull(currentUserForDashboard) { "User must be set before navigating to Dashboard" }
-                return DashboardViewModel(user, logoutUseCase) as T
+                return DashboardViewModel(user, logoutUseCase, biometricPreferenceStore, biometricAuthenticator) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class")
         }
+    }
+
+    val biometricLockViewModelFactory = object : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(BiometricLockViewModel::class.java)) {
+                return BiometricLockViewModel(biometricUnlockUseCase) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
+        }
+    }
+
+    val appLifecycleLocker: AppLifecycleLocker by lazy {
+        AppLifecycleLocker(
+            sessionManager = sessionManager,
+            biometricPreferenceStore = biometricPreferenceStore,
+            localLockManager = localLockManager,
+            applicationScope = applicationScope
+        )
     }
 }

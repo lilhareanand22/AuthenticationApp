@@ -11,7 +11,6 @@ import kotlin.coroutines.resume
  * Security layer: Android-specific implementation of [BiometricAuthenticator] utilizing AndroidX Biometric.
  */
 class AndroidBiometricAuthenticator(
-    private val activity: FragmentActivity,
     private val biometricManager: BiometricManager,
 ) : BiometricAuthenticator {
 
@@ -27,11 +26,19 @@ class AndroidBiometricAuthenticator(
     }
 
     override suspend fun authenticate(
+        activity: FragmentActivity?,
         title: String,
-        subtitle: String
+        subtitle: String?
     ): BiometricResult = suspendCancellableCoroutine { continuation ->
 
-        val executor = ContextCompat.getMainExecutor(activity)
+        val hostActivity = activity ?: run {
+            if (continuation.isActive) {
+                continuation.resume(BiometricResult.Error(-1, "Activity Context Missing"))
+            }
+            return@suspendCancellableCoroutine
+        }
+
+        val executor = ContextCompat.getMainExecutor(hostActivity)
 
         val callback = object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
@@ -61,7 +68,7 @@ class AndroidBiometricAuthenticator(
             }
         }
 
-        val biometricPrompt = BiometricPrompt(activity, executor, callback)
+        val biometricPrompt = BiometricPrompt(hostActivity, executor, callback)
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
             .setSubtitle(subtitle)

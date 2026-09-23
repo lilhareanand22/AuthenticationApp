@@ -4,4 +4,5 @@ sealed interface DashboardError {
     data object Network : DashboardError
     data object Server : DashboardError
     data object Unknown : DashboardError
+    data object BiometricUnavailable : DashboardError
 }

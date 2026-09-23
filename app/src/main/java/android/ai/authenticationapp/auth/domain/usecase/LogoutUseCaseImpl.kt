@@ -1,6 +1,7 @@
 package android.ai.authenticationapp.auth.domain.usecase
 
 import android.ai.authenticationapp.auth.data.local.SessionMetadataStore
+import android.ai.authenticationapp.auth.domain.lock.LocalLockManager
 import android.ai.authenticationapp.auth.domain.repository.AuthRepository
 import android.ai.authenticationapp.auth.domain.session.SessionManager
 import android.ai.authenticationapp.auth.domain.session.TokenManager
@@ -10,7 +11,8 @@ class LogoutUseCaseImpl(
     private val authRepository: AuthRepository,
     private val tokenManager: TokenManager,
     private val sessionMetadataStore: SessionMetadataStore,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val localLockManager: LocalLockManager
 ) : LogoutUseCase {
 
     override suspend fun invoke() {
@@ -32,6 +34,8 @@ class LogoutUseCaseImpl(
         tokenManager.clear()
         
         sessionMetadataStore.clear()
+
+        localLockManager.unlock()
         
         sessionManager.onLogout()
     }

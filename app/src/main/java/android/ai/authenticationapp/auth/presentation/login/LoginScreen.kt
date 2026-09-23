@@ -38,6 +38,9 @@ import androidx.compose.ui.unit.dp
 import android.ai.authenticationapp.R
 import android.ai.authenticationapp.ui.theme.AuthenticationAppTheme
 
+import androidx.compose.ui.platform.LocalContext
+import androidx.fragment.app.FragmentActivity
+
 /**
  * Pure state-driven MVI Login Screen.
  * Contains no business logic and does not instantiate ViewModels.
@@ -49,6 +52,8 @@ fun LoginScreen(
     modifier: Modifier = Modifier,
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val activity = context as? FragmentActivity
 
     val loginEnabled = state.email.isNotBlank() && state.password.isNotBlank() && !state.isLoading
 
@@ -181,7 +186,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             OutlinedButton(
-                onClick = { onIntent(LoginIntent.BiometricClicked) },
+                onClick = { onIntent(LoginIntent.BiometricClicked(activity)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
