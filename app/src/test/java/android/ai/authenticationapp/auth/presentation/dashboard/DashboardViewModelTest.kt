@@ -13,6 +13,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -71,6 +72,7 @@ class DashboardViewModelTest {
         assertTrue(viewModel.state.value.isLoggingOut)
         
         advanceUntilIdle()
+        yield()
 
         assertEquals(1, fakeLogout.callCount)
         assertFalse(viewModel.state.value.isLoggingOut)
