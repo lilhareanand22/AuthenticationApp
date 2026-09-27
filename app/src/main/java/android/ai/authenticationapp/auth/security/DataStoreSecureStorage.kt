@@ -8,13 +8,16 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
 
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "secure_auth_prefs")
 
 /**
  * Security layer: Concrete implementation of [SecureStorage] using AndroidX Preferences DataStore.
  */
-class DataStoreSecureStorage(
-    context: Context,
+class DataStoreSecureStorage @Inject constructor(
+    @ApplicationContext context: Context,
 ) : SecureStorage {
 
     private val appContext = context.applicationContext

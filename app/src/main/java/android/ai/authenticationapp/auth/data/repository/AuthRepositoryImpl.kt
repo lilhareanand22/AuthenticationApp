@@ -13,12 +13,14 @@ import android.ai.authenticationapp.auth.domain.model.LoginRequest
 import android.ai.authenticationapp.auth.domain.model.User
 import android.ai.authenticationapp.auth.domain.repository.AuthRepository
 
+import javax.inject.Inject
+
 /**
  * Data layer: Implementation of AuthRepository representing a demo/adapter strategy for DummyJSON.
  * DUMMYJSON LIMITATION: The mock backend does not support sessionId, deviceId, or token expiry. 
  * We isolate these missing values in this specific adapter layer rather than polluting the clean domain.
  */
-class DummyJsonAuthRepositoryAdapter(
+class DummyJsonAuthRepositoryAdapter @Inject constructor(
     private val remoteDataSource: AuthRemoteDataSource,
     private val sessionMetadataProvider: SessionMetadataProvider,
 ) : AuthRepository {

@@ -8,13 +8,16 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
 
+import android.ai.authenticationapp.di.DeviceIdDataStore
+import javax.inject.Inject
+
 private val Context.deviceIdDataStore: DataStore<Preferences> by preferencesDataStore(name = "device_id_prefs")
 
 /**
  * Data layer: Concrete implementation of [DeviceIdStore] backed by Preferences DataStore.
  */
-class DataStoreDeviceIdStore(
-    private val dataStore: DataStore<Preferences>,
+class DataStoreDeviceIdStore @Inject constructor(
+    @param:DeviceIdDataStore private val dataStore: DataStore<Preferences>,
 ) : DeviceIdStore {
 
     override suspend fun get(): String? {

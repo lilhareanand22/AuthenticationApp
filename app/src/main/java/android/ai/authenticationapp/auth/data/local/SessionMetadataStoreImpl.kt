@@ -9,13 +9,18 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
 
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+
 private val Context.sessionMetadataDataStore: DataStore<Preferences> by preferencesDataStore(name = "session_metadata_prefs")
 
 /**
  * Data layer: Concrete implementation of [SessionMetadataStore] backed by DataStore.
  * Persists session metadata separately from encrypted credentials.
  */
-class SessionMetadataStoreImpl(context: Context) : SessionMetadataStore {
+class SessionMetadataStoreImpl @Inject constructor(
+    @ApplicationContext context: Context
+) : SessionMetadataStore {
 
     private val appContext = context.applicationContext
 

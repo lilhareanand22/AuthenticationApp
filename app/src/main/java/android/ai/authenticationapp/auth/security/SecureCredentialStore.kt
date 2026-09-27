@@ -3,11 +3,13 @@ package android.ai.authenticationapp.auth.security
 import android.annotation.SuppressLint
 import android.ai.authenticationapp.auth.domain.model.Credentials
 
+import javax.inject.Inject
+
 /**
  * Security layer: Concrete implementation of [CredentialStore] providing secure credential persistence
  * by orchestrating [SecureStorage], [Encryption], and [CredentialsSerializer].
  */
-class SecureCredentialStore(
+class SecureCredentialStore @Inject constructor(
     private val secureStorage: SecureStorage,
     private val encryption: Encryption,
 ) : CredentialStore {

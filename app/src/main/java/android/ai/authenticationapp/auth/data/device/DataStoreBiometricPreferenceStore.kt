@@ -7,11 +7,14 @@ import androidx.datastore.preferences.core.edit
 import android.ai.authenticationapp.auth.domain.device.BiometricPreferenceStore
 import kotlinx.coroutines.flow.first
 
+import android.ai.authenticationapp.di.BiometricDataStore
+import javax.inject.Inject
+
 /**
  * Data layer: Concrete implementation of [BiometricPreferenceStore] backed by Preferences DataStore.
  */
-class DataStoreBiometricPreferenceStore(
-    private val dataStore: DataStore<Preferences>
+class DataStoreBiometricPreferenceStore @Inject constructor(
+    @param:BiometricDataStore private val dataStore: DataStore<Preferences>
 ) : BiometricPreferenceStore {
 
     companion object {

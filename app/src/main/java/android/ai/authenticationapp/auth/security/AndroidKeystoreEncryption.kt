@@ -9,10 +9,12 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
+import javax.inject.Inject
+
 /**
  * Security layer: Android Keystore backed implementation of [Encryption] using AES-256-GCM.
  */
-class AndroidKeystoreEncryption : Encryption {
+class AndroidKeystoreEncryption @Inject constructor() : Encryption {
 
     companion object {
         private const val KEY_ALIAS = "auth_credential_key"

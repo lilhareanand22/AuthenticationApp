@@ -7,10 +7,12 @@ import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
+import javax.inject.Inject
+
 /**
  * Security layer: Android-specific implementation of [BiometricAuthenticator] utilizing AndroidX Biometric.
  */
-class AndroidBiometricAuthenticator(
+class AndroidBiometricAuthenticator @Inject constructor(
     private val biometricManager: BiometricManager,
 ) : BiometricAuthenticator {
 

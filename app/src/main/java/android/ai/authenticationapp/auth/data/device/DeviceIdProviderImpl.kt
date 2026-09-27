@@ -5,10 +5,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 
+import javax.inject.Inject
+
 /**
  * Data layer: Implementation of [DeviceIdProvider] that handles thread-safe initialization and generation.
  */
-class DeviceIdProviderImpl(
+class DeviceIdProviderImpl @Inject constructor(
     private val store: DeviceIdStore,
 ) : DeviceIdProvider {
 

@@ -5,11 +5,13 @@ import android.ai.authenticationapp.auth.domain.util.TimeProvider
 import java.time.Instant
 import java.util.UUID
 
+import javax.inject.Inject
+
 /**
  * Data layer: Temporary adapter fulfilling [SessionMetadataProvider] limitations imposed by DummyJSON.
  */
 @SuppressLint("NewApi")
-class DummyJsonSessionMetadataProvider(
+class DummyJsonSessionMetadataProvider @Inject constructor(
     private val timeProvider: TimeProvider
 ) : SessionMetadataProvider {
 
