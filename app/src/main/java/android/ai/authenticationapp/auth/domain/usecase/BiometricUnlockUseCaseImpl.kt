@@ -7,7 +7,9 @@ import android.ai.authenticationapp.auth.security.BiometricAvailability
 import android.ai.authenticationapp.auth.security.BiometricResult
 import androidx.fragment.app.FragmentActivity
 
-class BiometricUnlockUseCaseImpl(
+import javax.inject.Inject
+
+class BiometricUnlockUseCaseImpl @Inject constructor(
     private val biometricPreferenceStore: BiometricPreferenceStore,
     private val biometricAuthenticator: BiometricAuthenticator,
     private val localLockManager: LocalLockManager

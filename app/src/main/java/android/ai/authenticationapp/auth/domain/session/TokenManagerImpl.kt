@@ -11,6 +11,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Instant
 
+import android.ai.authenticationapp.auth.domain.util.TimeProvider
+import javax.inject.Inject
+
 private data class RefreshOperation(
     val generation: Long,
     val deferred: CompletableDeferred<String?>
@@ -26,13 +29,15 @@ private sealed class RefreshDecision {
  * Domain layer: Implementation of [TokenManager] handling token lifecycle, validation, and refresh coordination.
  */
 @SuppressLint("NewApi")
-class TokenManagerImpl(
+class TokenManagerImpl @Inject constructor(
     private val credentialStore: CredentialStore,
     private val authRepository: AuthRepository,
     private val tokenExpiryPolicy: TokenExpiryPolicy,
     private val applicationScope: CoroutineScope,
-    private val nowProvider: () -> Instant = { Instant.now() },
+    private val timeProvider: TimeProvider,
 ) : TokenManager {
+
+    private val nowProvider: () -> Instant = { timeProvider.now() }
 
     private val mutex = Mutex()
     private var sessionGeneration: Long = 0L

@@ -13,10 +13,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+import javax.inject.Inject
+import javax.inject.Singleton
+
 /**
  * Domain layer: Orchestrates application-wide authentication state and startup session restoration.
  */
-open class SessionManager(
+@Singleton
+open class SessionManager @Inject constructor(
     private val tokenManager: TokenManager,
     private val authRepository: AuthRepository,
     private val biometricPreferenceStore: BiometricPreferenceStore,

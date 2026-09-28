@@ -8,11 +8,13 @@ import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
+import javax.inject.Inject
+
 /**
  * Domain layer: Observes the whole application lifecycle to lock the app when backgrounded.
  * Respects user preferences and active authentication state.
  */
-class AppLifecycleLocker(
+class AppLifecycleLocker @Inject constructor(
     private val sessionManager: SessionManager,
     private val biometricPreferenceStore: BiometricPreferenceStore,
     private val localLockManager: LocalLockManager,

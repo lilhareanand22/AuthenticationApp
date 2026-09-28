@@ -7,7 +7,9 @@ import android.ai.authenticationapp.auth.domain.session.SessionManager
 import android.ai.authenticationapp.auth.domain.session.TokenManager
 import kotlinx.coroutines.CancellationException
 
-class LogoutUseCaseImpl(
+import javax.inject.Inject
+
+class LogoutUseCaseImpl @Inject constructor(
     private val authRepository: AuthRepository,
     private val tokenManager: TokenManager,
     private val sessionMetadataStore: SessionMetadataStore,

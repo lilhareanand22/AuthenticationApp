@@ -9,11 +9,13 @@ import android.ai.authenticationapp.auth.domain.repository.AuthRepository
 import android.ai.authenticationapp.auth.domain.session.SessionManager
 import android.ai.authenticationapp.auth.security.CredentialStore
 
+import javax.inject.Inject
+
 /**
  * Domain layer: Concrete implementation of [LoginUseCase].
  * Orchestrates backend authentication, secure persistence, and application session state updates.
  */
-class LoginUseCaseImpl(
+class LoginUseCaseImpl @Inject constructor(
     private val authRepository: AuthRepository,
     private val deviceIdProvider: DeviceIdProvider,
     private val credentialStore: CredentialStore,
