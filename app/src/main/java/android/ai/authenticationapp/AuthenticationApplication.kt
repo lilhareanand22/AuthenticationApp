@@ -1,9 +1,10 @@
 package android.ai.authenticationapp
 
+import android.ai.authenticationapp.auth.domain.lock.AppLifecycleLocker
 import android.app.Application
-import android.ai.authenticationapp.di.AuthContainer
 import androidx.lifecycle.ProcessLifecycleOwner
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
 /**
  * Top-level Application class.
@@ -12,15 +13,13 @@ import dagger.hilt.android.HiltAndroidApp
 @HiltAndroidApp
 class AuthenticationApplication : Application() {
 
-    lateinit var authContainer: AuthContainer
-        private set
+    @Inject
+    lateinit var appLifecycleLocker: AppLifecycleLocker
 
     override fun onCreate() {
         super.onCreate()
-        // Instantiate the manual dependency injection graph component
-        authContainer = AuthContainer(this)
         
         // Register lifecycle observer for automatic background app locking
-        ProcessLifecycleOwner.get().lifecycle.addObserver(authContainer.appLifecycleLocker)
+        ProcessLifecycleOwner.get().lifecycle.addObserver(appLifecycleLocker)
     }
 }

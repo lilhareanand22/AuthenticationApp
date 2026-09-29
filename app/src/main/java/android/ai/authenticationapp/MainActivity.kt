@@ -1,7 +1,9 @@
 package android.ai.authenticationapp
 
+import android.ai.authenticationapp.auth.domain.lock.LocalLockManager
 import android.ai.authenticationapp.auth.domain.lock.LocalUnlockState
 import android.ai.authenticationapp.auth.domain.session.AuthenticationState
+import android.ai.authenticationapp.auth.domain.session.SessionManager
 import android.ai.authenticationapp.auth.presentation.dashboard.DashboardRoute
 import android.ai.authenticationapp.auth.presentation.dashboard.DashboardViewModel
 import android.ai.authenticationapp.auth.presentation.lock.BiometricLockRoute
@@ -28,32 +30,37 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import android.ai.authenticationapp.ui.theme.AuthenticationAppTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
+
+    @Inject
+    lateinit var sessionManager: SessionManager
+
+    @Inject
+    lateinit var localLockManager: LocalLockManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        val app = application as AuthenticationApplication
-        val authContainer = app.authContainer
 
         setContent {
             AuthenticationAppTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     val navController = rememberNavController()
 
-                    val authState by authContainer.sessionManager.authState.collectAsStateWithLifecycle()
-                    val lockState by authContainer.localLockManager.state.collectAsStateWithLifecycle()
+                    val authState by sessionManager.authState.collectAsStateWithLifecycle()
+                    val lockState by localLockManager.state.collectAsStateWithLifecycle()
 
                     // Restore session on app launch
                     LaunchedEffect(Unit) {
-                        authContainer.sessionManager.restoreSession()
+                        sessionManager.restoreSession()
                     }
 
                     // React to Root Navigation State changes
                     LaunchedEffect(authState, lockState) {
-                        when (val currentAuthState = authState) {
+                        when (authState) {
                             is AuthenticationState.Unknown -> {
                                 // Waiting for session restoration
                             }
@@ -63,7 +70,6 @@ class MainActivity : FragmentActivity() {
                                 }
                             }
                             is AuthenticationState.Authenticated -> {
-                                authContainer.currentUserForDashboard = currentAuthState.user
                                 if (lockState == LocalUnlockState.Locked) {
                                     navController.navigate("lock") {
                                         popUpTo(0) { inclusive = true }
@@ -97,11 +103,6 @@ class MainActivity : FragmentActivity() {
                             LoginRoute(
                                 viewModel = viewModel,
                                 onNavigateToHome = {
-                                    val currentAuthState = authContainer.sessionManager.authState.value
-                                    if (currentAuthState is AuthenticationState.Authenticated) {
-                                        authContainer.currentUserForDashboard = currentAuthState.user
-                                    }
-
                                     navController.navigate("dashboard") {
                                         popUpTo("login") { inclusive = true }
                                     }
