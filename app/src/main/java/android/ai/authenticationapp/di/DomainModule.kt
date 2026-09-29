@@ -10,8 +10,13 @@ import android.ai.authenticationapp.auth.domain.usecase.LoginUseCase
 import android.ai.authenticationapp.auth.domain.usecase.LoginUseCaseImpl
 import android.ai.authenticationapp.auth.domain.usecase.LogoutUseCase
 import android.ai.authenticationapp.auth.domain.usecase.LogoutUseCaseImpl
+import android.ai.authenticationapp.auth.domain.session.TokenExpiryPolicy
+import android.os.Build
+import androidx.annotation.RequiresApi
+import java.time.Duration
 import dagger.Binds
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
@@ -42,4 +47,13 @@ abstract class DomainModule {
     @Binds
     @Singleton
     abstract fun bindBiometricUnlockUseCase(impl: BiometricUnlockUseCaseImpl): BiometricUnlockUseCase
+
+    companion object {
+        @RequiresApi(Build.VERSION_CODES.O)
+        @Provides
+        @Singleton
+        fun provideTokenExpiryPolicy(): TokenExpiryPolicy {
+            return TokenExpiryPolicy(refreshSafetyWindow = Duration.ofMinutes(5))
+        }
+    }
 }
