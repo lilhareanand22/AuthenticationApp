@@ -22,7 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -92,7 +92,7 @@ class MainActivity : FragmentActivity() {
                         }
 
                         composable("login") {
-                            val viewModel: LoginViewModel = viewModel(factory = authContainer.loginViewModelFactory)
+                            val viewModel: LoginViewModel = hiltViewModel()
                             
                             LoginRoute(
                                 viewModel = viewModel,
@@ -110,7 +110,7 @@ class MainActivity : FragmentActivity() {
                         }
 
                         composable("lock") {
-                            val viewModel: BiometricLockViewModel = viewModel(factory = authContainer.biometricLockViewModelFactory)
+                            val viewModel: BiometricLockViewModel = hiltViewModel()
 
                             BiometricLockRoute(
                                 viewModel = viewModel,
@@ -123,7 +123,7 @@ class MainActivity : FragmentActivity() {
                         }
 
                         composable("dashboard") {
-                            val viewModel: DashboardViewModel = viewModel(factory = authContainer.dashboardViewModelFactory)
+                            val viewModel: DashboardViewModel = hiltViewModel()
 
                             DashboardRoute(
                                 viewModel = viewModel,

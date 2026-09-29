@@ -1,12 +1,24 @@
 package android.ai.authenticationapp.auth.presentation.dashboard
 
+import android.annotation.SuppressLint
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.ai.authenticationapp.auth.domain.device.BiometricPreferenceStore
+import android.ai.authenticationapp.auth.domain.lock.LocalLockManager
+import android.ai.authenticationapp.auth.domain.lock.LocalUnlockState
+import android.ai.authenticationapp.auth.domain.model.AuthSession
+import android.ai.authenticationapp.auth.domain.model.Credentials
+import android.ai.authenticationapp.auth.domain.model.LoginRequest
+import android.ai.authenticationapp.auth.domain.model.Session
 import android.ai.authenticationapp.auth.domain.model.User
+import android.ai.authenticationapp.auth.domain.repository.AuthRepository
+import android.ai.authenticationapp.auth.domain.session.AuthenticationState
+import android.ai.authenticationapp.auth.domain.session.SessionManager
+import android.ai.authenticationapp.auth.domain.session.TokenManager
 import android.ai.authenticationapp.auth.domain.usecase.LogoutUseCase
 import android.ai.authenticationapp.auth.security.BiometricAuthenticator
 import android.ai.authenticationapp.auth.security.BiometricAvailability
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -16,15 +28,35 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
+import javax.inject.Inject
 
-class DashboardViewModel(
-    private val user: User,
+@HiltViewModel
+class DashboardViewModel @Inject constructor(
     private val logoutUseCase: LogoutUseCase,
     private val biometricPreferenceStore: BiometricPreferenceStore,
-    private val biometricAuthenticator: BiometricAuthenticator
+    private val biometricAuthenticator: BiometricAuthenticator,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(DashboardState(user = user))
+    // Secondary constructor for testing where user is provided directly
+    constructor(
+        user: User,
+        logoutUseCase: LogoutUseCase,
+        biometricPreferenceStore: BiometricPreferenceStore,
+        biometricAuthenticator: BiometricAuthenticator
+    ) : this(
+        logoutUseCase = logoutUseCase,
+        biometricPreferenceStore = biometricPreferenceStore,
+        biometricAuthenticator = biometricAuthenticator,
+        sessionManager = createTestSessionManager(user)
+    )
+
+    private val currentUser: User
+        get() = (sessionManager.authState.value as? AuthenticationState.Authenticated)?.user
+            ?: User("1", "user@example.com", "User")
+
+    private val _state = MutableStateFlow(DashboardState(user = currentUser))
     val state: StateFlow<DashboardState> = _state.asStateFlow()
 
     private val _effects = Channel<DashboardEffect>(Channel.BUFFERED)
@@ -121,4 +153,38 @@ class DashboardViewModel(
     private fun isHardwareAvailable(): Boolean {
         return biometricAuthenticator.checkAvailability() == BiometricAvailability.Available
     }
+}
+
+@SuppressLint("NewApi")
+private fun createTestSessionManager(user: User): SessionManager {
+    val sm = SessionManager(
+        tokenManager = object : TokenManager {
+            override suspend fun getValidAccessToken(): String? = null
+            override suspend fun refresh(): String? = null
+            override suspend fun clear() {}
+        },
+        authRepository = object : AuthRepository {
+            override suspend fun login(request: LoginRequest): AuthSession = throw NotImplementedError()
+            override suspend fun getCurrentUser(): User = user
+            override suspend fun refreshToken(refreshToken: String): Credentials = throw NotImplementedError()
+            override suspend fun logout(sessionId: String, deviceId: String) {}
+        },
+        biometricPreferenceStore = object : BiometricPreferenceStore {
+            override suspend fun isEnabled(): Boolean = false
+            override suspend fun setEnabled(enabled: Boolean) {}
+        },
+        localLockManager = object : LocalLockManager {
+            override val state = MutableStateFlow<LocalUnlockState>(LocalUnlockState.Unlocked)
+            override fun lock() {}
+            override fun unlock() {}
+        }
+    )
+    sm.onLogin(
+        AuthSession(
+            user = user,
+            session = Session("s", "d", user.id),
+            credentials = Credentials("a", "r", Instant.now())
+        )
+    )
+    return sm
 }

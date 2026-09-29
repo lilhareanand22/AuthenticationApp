@@ -15,7 +15,11 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class BiometricLockViewModel(
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+
+@HiltViewModel
+class BiometricLockViewModel @Inject constructor(
     private val biometricUnlockUseCase: BiometricUnlockUseCase
 ) : ViewModel() {
 

@@ -28,10 +28,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
 
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+
 /**
  * Presentation layer: ViewModel orchestrating LoginScreen state, intents, and effects.
  */
-class LoginViewModel(
+@HiltViewModel
+class LoginViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
     private val biometricAuthenticator: BiometricAuthenticator,
     private val biometricPreferenceStore: BiometricPreferenceStore,
